@@ -3,12 +3,12 @@ import sys
 from optparse import OptionParser 
 
 def slider3(out_type, size, sat, offset):  
-    if   sat == 0:
+    if sat == 0:
         slider3_unsat(out_type, size, offset)
     elif sat == 1:
         slider3_sat(out_type, size, offset)
     else:
-        print >> sys.stderr, 'Error: Unknown out_type: %s' % out_type
+        (print >> sys.stderr, f'Error: Unknown out_type: {out_type}')
         exit(0)
 
 '''

@@ -26,7 +26,7 @@ def get_pos_deci(train_y, train_x, test_y, test_x, param):
 #input raw attributes, labels, param, cv_fold in decision value building
 #output list of decision value, remember to seed(0)
 def get_cv_deci(prob_y, prob_x, param, nr_fold):
-	if nr_fold == 1 or nr_fold==0:
+	if nr_fold in [1, 0]:
 		deci,model = get_pos_deci(prob_y, prob_x, prob_y, prob_x, param)
 		return deci
 	deci, model = [], []
@@ -58,14 +58,14 @@ class gnuplot:
 			cmdline = gnuplot_exe
 			self.__dict__['screen_term'] = 'windows'
 		else:
-			cmdline = gnuplot_exe + ' -persist'
+			cmdline = f'{gnuplot_exe} -persist'
 			self.__dict__['screen_term'] = 'x11'
 		self.__dict__['iface'] = popen(cmdline,'w')
 		self.set_term(term)
 
 	def set_term(self, term):
 		if term=='onscreen':
-			self.writeln("set term %s" % self.screen_term)
+			self.writeln(f"set term {self.screen_term}")
 		else:
 			#term must be either x.ps or x.png
 			if term.find('.ps')>0:
@@ -94,7 +94,7 @@ class gnuplot:
 		self.iface.close()
 
 	def __repr__(self):
-		return "<gnuplot instance: output=%s>" % term
+		return f"<gnuplot instance: output={term}>"
 
 	#data is a list of [x,y]
 	def plotline(self, data):
@@ -131,7 +131,7 @@ def proc_argv(argv = argv):
 def plot_roc(deci, label, output, title):
 	#count of postive and negative labels
 	db = []
-	pos, neg = 0, 0 		
+	pos, neg = 0, 0
 	for i in range(len(label)):
 		if label[i]>0:
 			pos+=1
@@ -153,7 +153,7 @@ def plot_roc(deci, label, output, title):
 		xy_arr.append([fp/neg,tp/pos])
 
 	#area under curve
-	aoc = 0.			
+	aoc = 0.
 	prev_x = 0
 	for x,y in xy_arr:
 		if x != prev_x:
@@ -161,7 +161,7 @@ def plot_roc(deci, label, output, title):
 			prev_x = x
 
 	#begin gnuplot
-	if title == None:
+	if title is None:
 		title = output
 	#also write to file
 	g = gnuplot(output)
@@ -178,34 +178,33 @@ def plot_roc(deci, label, output, title):
 
 def check_gnuplot_exe():
 	global gnuplot_exe
-	gnuplot_exe = None
-	for g in gnuplot_exe_list:
-		if path.exists(g.replace('"','')):
-			gnuplot_exe=g
-			break
-	if gnuplot_exe == None:
+	gnuplot_exe = next(
+	    (g for g in gnuplot_exe_list if path.exists(g.replace('"', ''))), None)
+	if gnuplot_exe is None:
 		print("You must add correct path of 'gnuplot' into gnuplot_exe_list")
 		raise SystemExit
 
 def main():
 	check_gnuplot_exe()
 	if len(argv) <= 1:
-		print("Usage: %s [-v cv_fold | -T testing_file] [libsvm-options] training_file" % argv[0])
+		print(
+		    f"Usage: {argv[0]} [-v cv_fold | -T testing_file] [libsvm-options] training_file"
+		)
 		raise SystemExit
 	param,fold,train_file,test_file = proc_argv()
-	output_file = path.split(train_file)[1] + '-roc.png'
+	output_file = f'{path.split(train_file)[1]}-roc.png'
 	#read data
 	train_y, train_x = svm_read_problem(train_file)
-	if set(train_y) != set([1,-1]):
+	if set(train_y) != {1, -1}:
 		print("ROC is only applicable to binary classes with labels 1, -1")
 		raise SystemExit
 
 	#get decision value, with positive = label+
 	seed(0)	#reset random seed
-	if test_file:		#go with test_file
-		output_title = "%s on %s" % (path.split(test_file)[1], path.split(train_file)[1])
+	if test_file:	#go with test_file
+		output_title = f"{path.split(test_file)[1]} on {path.split(train_file)[1]}"
 		test_y, test_x = svm_read_problem(test_file)
-		if set(test_y) != set([1,-1]):
+		if set(test_y) != {1, -1}:
 			print("ROC is only applicable to binary classes with labels 1, -1")
 			raise SystemExit
 		deci,model = get_pos_deci(train_y, train_x, test_y, test_x, param)
