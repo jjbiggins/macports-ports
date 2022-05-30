@@ -10,13 +10,13 @@ except:
 
 tkversion = "__TK-VERSION__"
 prefix = "__PREFIX__"
-inc_dirs = [prefix + "/include"]
-lib_dirs = [prefix + "/lib"]
-libs = ["tcl" + tkversion, "tk" + tkversion]
+inc_dirs = [f"{prefix}/include"]
+lib_dirs = [f"{prefix}/lib"]
+libs = [f"tcl{tkversion}", f"tk{tkversion}"]
 
 setup(name = "__MODULE_NAME__",
       description = "Tk Extension to Python",
-      
+
       ext_modules = [Extension('_tkinter', ['_tkinter.c', 'tkappinit.c'],
                                define_macros=[('WITH_APPINIT', 1)],
                                include_dirs = inc_dirs,

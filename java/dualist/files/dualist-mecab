@@ -25,30 +25,35 @@ else:
 
 # run the GUI webapp
 if cmd == 'gui':
-    os.system('play run gui -Xmx' + heapsize + mecab_options)
+    os.system(f'play run gui -Xmx{heapsize}{mecab_options}')
     sys.exit(0)
 
-# run a standalone classifier from trained model
 elif cmd == 'classify':
     if len(sys.argv) < 4:
         print >> sys.stderr, "~ At least two arguments are required:"
         print >> sys.stderr, "~     $ dualist classify [model] [documents...]"
         print >> sys.stderr, "~"
     else:
-        os.system('java -Xmx' + heapsize + mecab_options + ' -cp gui/lib/dualist-core.jar dualist.tui.Classify ' + ' '.join(more_args))
+        os.system(
+            f'java -Xmx{heapsize}{mecab_options} -cp gui/lib/dualist-core.jar dualist.tui.Classify '
+            + ' '.join(more_args)
+        )
+
         sys.exit(0)
 
-# evaluate a trained classifier on a test set
 elif cmd == 'test':
     if len(sys.argv) < 4:
         print >> sys.stderr, "~ Two arguments are required:"
         print >> sys.stderr, "~     $ dualist test [model] [test-set]"
         print >> sys.stderr, "~"
     else:
-        os.system('java -Xmx' + heapsize + mecab_options + ' -cp gui/lib/dualist-core.jar dualist.tui.Test ' + ' '.join(more_args))
+        os.system(
+            f'java -Xmx{heapsize}{mecab_options} -cp gui/lib/dualist-core.jar dualist.tui.Test '
+            + ' '.join(more_args)
+        )
+
         sys.exit(0)
 
-# help!
 else:
     print >> sys.stderr, "~ Usage: dualist cmd [args]"
     print >> sys.stderr, "~"
@@ -57,6 +62,6 @@ else:
     print >> sys.stderr, "~    test         evaluate a trained model on a labeled test set"
     print >> sys.stderr, "~"
     if len(sys.argv) > 1:
-        print >> sys.stderr, "~ Invalid command: %s" % sys.argv[1]
+        (print >> sys.stderr, f"~ Invalid command: {sys.argv[1]}")
         print >> sys.stderr, "~"
     sys.exit(-1)

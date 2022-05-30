@@ -42,7 +42,7 @@ def arg_process():
 	global svmtrain_exe, svmpredict_exe
 
 	if len(sys.argv) not in [2,3]:
-		print('Usage: %s training_file [testing_file]' % sys.argv[0])
+		print(f'Usage: {sys.argv[0]} training_file [testing_file]')
 		raise SystemExit
 
 	train_pathfile=sys.argv[1]
@@ -120,11 +120,7 @@ def select(sample, feat_v):
 
 	#for each sample
 	for s in sample:
-		point={}
-		#for each feature to select
-		for f in feat_v:
-			if f in s: point[f]=s[f]
-
+		point = {f: s[f] for f in feat_v if f in s}
 		new_samp.append(point)
 
 	return new_samp
@@ -132,7 +128,7 @@ def select(sample, feat_v):
 
 ### Do parameter searching (grid.py) 
 def train_svm(tr_file):
-	cmd = "%s %s" % (gridpy_exe,tr_file)
+	cmd = f"{gridpy_exe} {tr_file}"
 	print(cmd)
 	print('Cross validation...')
 	std_out = Popen(cmd, shell = True, stdout = PIPE).stdout
@@ -144,7 +140,7 @@ def train_svm(tr_file):
 		if not line: break
 	c,g,rate = map(float,last_line.split())
 
-	print('Best c=%s, g=%s CV rate=%s' % (c,g,rate))
+	print(f'Best c={c}, g={g} CV rate={rate}')
 
 	return c,g,rate
 
@@ -152,12 +148,11 @@ def train_svm(tr_file):
 ### return predicted labels
 def predict(tr_label, tr_sample, c, g, test_label, test_sample, del_model=1, model_name=None):
 	global train_file
-	tr_file = train_file+".tr"
-	te_file = train_file+".te"
-	if model_name:  model_file = model_name
-	else:  model_file = "%s.model"%tr_file
-	out_file = "%s.o"%te_file
-        
+	tr_file = f"{train_file}.tr"
+	te_file = f"{train_file}.te"
+	model_file = model_name or f"{tr_file}.model"
+	out_file = f"{te_file}.o"
+
 	# train
 	writedata(tr_sample,tr_label,tr_file)
 	cmd = "%s -c %f -g %f %s %s" % (svmtrain_exe,c,g,tr_file,model_file)
@@ -165,26 +160,22 @@ def predict(tr_label, tr_sample, c, g, test_label, test_sample, del_model=1, mod
 
 	# test
 	writedata(test_sample,test_label,te_file)
-	cmd = "%s %s %s %s" % (svmpredict_exe, te_file,model_file,out_file )
+	cmd = f"{svmpredict_exe} {te_file} {model_file} {out_file}"
 	print(cmd)
 	os.system(cmd)
-        
+
 	# fill in pred_y
 	pred_y=[]
-	fp = open(out_file)
-	line = fp.readline()
-	while line:
-		pred_y.append( float(line) )
-		line = fp.readline()
-        
-	rem_file(tr_file)
-	#rem_file("%s.out"%tr_file)
-	#rem_file("%s.png"%tr_file)
-	rem_file(te_file)
-	if del_model: rem_file(model_file)
-	fp.close()
+	with open(out_file) as fp:
+		while line := fp.readline():
+			pred_y.append( float(line) )
+		rem_file(tr_file)
+		#rem_file("%s.out"%tr_file)
+		#rem_file("%s.png"%tr_file)
+		rem_file(te_file)
+		if del_model: rem_file(model_file)
 	rem_file(out_file)
-        
+
 	return pred_y
 
 
@@ -236,9 +227,8 @@ VERBOSE_TIME = 1
 def writelog(str, vlevel=VERBOSE_MAX):
 	global logname
 	if vlevel > VERBOSE_ITER:
-		logfile_fd = open(logname, 'a')
-		logfile_fd.write(str)
-		logfile_fd.close()
+		with open(logname, 'a') as logfile_fd:
+			logfile_fd.write(str)
 
 
 def rem_file(filename):
@@ -252,8 +242,6 @@ def main():
 	global whole_fsc_dict,whole_imp_v
 
 	times=5 #number of hold-out times
-	accuracy=[]
-
 	### Read Data
 	print("reading....")
 	t=time()
@@ -276,16 +264,12 @@ def main():
 	###write (sorted) f-score list in another file
 	f_tuples = list(whole_fsc_dict.items())
 	f_tuples.sort(key = value_cmpf)
-	fd = open("%s.fscore"%train_file, 'w')
-	for t in f_tuples:
-		fd.write("%d: \t%.6f\n"%t)
-	fd.close()
-
-
+	with open(f"{train_file}.fscore", 'w') as fd:
+		for t in f_tuples:
+			fd.write("%d: \t%.6f\n"%t)
 	### decide sizes of features to try
 	fnum_v = feat_num_try(f_tuples) #ex: [50,25,12,6,3,1]
-	for i in range(len(fnum_v)):
-		accuracy.append([])
+	accuracy = [[] for _ in range(len(fnum_v))]
 	writelog("try feature sizes: %s\n\n"%(fnum_v))
 
 
@@ -301,7 +285,7 @@ def main():
 		t=time()
 		#pick features
 		tr_sel_samp = select(train_sample, fv)
-		tr_sel_name = train_file+".tr"
+		tr_sel_name = f"{train_file}.tr"
 		t=time()-t
 		writelog("\n   feature num: %d\n"%fn, VERBOSE_ITER)
 		writelog("      pick time: %.1f\n"%t, VERBOSE_TIME)
@@ -326,8 +310,8 @@ def main():
 
 	fnum=fnum_v[est_acc.index(max(est_acc))]
 #	print(est_acc.index(max(est_acc)))
-	print('Number of selected features %s' % fnum)
-	print('Please see %s.select for details' % train_file)
+	print(f'Number of selected features {fnum}')
+	print(f'Please see {train_file}.select for details')
 
 	#result for features selected
 	sel_fv = whole_imp_v[:fnum]
@@ -335,12 +319,12 @@ def main():
 	writelog("max validation accuarcy: %.6f\n"%max(est_acc))
 	writelog("\nselect features: %s\n"%sel_fv)
 	writelog("%s features\n"%fnum)
-		
+
 
 	# REMOVE INTERMEDIATE TEMPORARY FILE: training file after selection
 	rem_file(tr_sel_name)
-	rem_file("%s.out"%tr_sel_name)
-	rem_file("%s.png"%tr_sel_name)
+	rem_file(f"{tr_sel_name}.out")
+	rem_file(f"{tr_sel_name}.png")
 
 
 	### do testing 
@@ -352,7 +336,7 @@ def main():
 		test_label, test_sample, max_index = readdata(test_pathfile)
 		writelog("\nloading testing data '%s'\n"%test_pathfile)
 		print("read done")
-		
+
 		#picking features
 		train_sel_samp = select(train_sample, sel_fv)
 		test_sel_samp = select(test_sample, sel_fv)
@@ -368,7 +352,16 @@ def main():
 
 
 		### predict
-		pred_y = predict(train_label, train_sel_samp, c, g, test_label, test_sel_samp, 0, "%s.model"%train_sel_name)
+		pred_y = predict(
+		    train_label,
+		    train_sel_samp,
+		    c,
+		    g,
+		    test_label,
+		    test_sel_samp,
+		    0,
+		    f"{train_sel_name}.model",
+		)
 
 		#calculate accuracy
 		acc = cal_acc(pred_y, test_label)
@@ -377,9 +370,8 @@ def main():
 
 		#writing predict labels
 		out_name = "%s.%d.pred"%(test_file,fnum)
-		fd = open(out_name, 'w')
-		for y in pred_y: fd.write("%f\n"%y)
-		fd.close()
+		with open(out_name, 'w') as fd:
+			for y in pred_y: fd.write("%f\n"%y)
 		
 
 ### predict all possible sets ###
@@ -429,14 +421,12 @@ def predict_all():
 
 		#writing predict labels
 		out_name = "%s.%d.pred"%(test_file,fnum)
-		fd = open(out_name, 'w')
-		for y in pred_y: fd.write("%f\n"%y)
-		fd.close()
-
+		with open(out_name, 'w') as fd:
+			for y in pred_y: fd.write("%f\n"%y)
 		del_out_png = 0
 		if del_out_png:
-			rem_file("%s.out"%train_sel_name)
-			rem_file("%s.png"%train_sel_name)
+			rem_file(f"{train_sel_name}.out")
+			rem_file(f"{train_sel_name}.png")
 
 
 ###return a dict containing F_j
@@ -463,10 +453,10 @@ def cal_Fscore(labels,samples):
 	### now p_num and max_idx are set
 
 	### initialize variables
-	sum_f = [0 for i in range(max_idx)]
-	for la in p_num.keys():
-		sum_l_f[la] = [0 for i in range(max_idx)]
-		sumq_l_f[la] = [0 for i in range(max_idx)]
+	sum_f = [0 for _ in range(max_idx)]
+	for la in p_num:
+		sum_l_f[la] = [0 for _ in range(max_idx)]
+		sumq_l_f[la] = [0 for _ in range(max_idx)]
 
 	### pass 2: calculate some stats of data
 	for p in range(len(samples)): # for every data point
@@ -483,13 +473,11 @@ def cal_Fscore(labels,samples):
 	### for each feature, calculate f-score
 	eps = 1e-12
 	for f in range(max_idx):
-		SB = 0
-		for la in p_num.keys():
-			SB += (p_num[la] * (sum_l_f[la][f]/p_num[la] - sum_f[f]/data_num)**2 )
-
+		SB = sum(value * (sum_l_f[la][f] / p_num[la] - sum_f[f] / data_num)**2
+		         for la, value in p_num.items())
 		SW = eps
-		for la in p_num.keys():
-			SW += (sumq_l_f[la][f] - (sum_l_f[la][f]**2)/p_num[la]) 
+		for la, value_ in p_num.items():
+			SW += sumq_l_f[la][f] - sum_l_f[la][f]**2 / value_ 
 
 		F[f+1] = SB / SW
 
@@ -502,31 +490,25 @@ def readdata(filename):
 	labels=[]
 	samples=[]
 	max_index=0
-	#load training data
-	fp = open(filename)
-	line = fp.readline()
+	with open(filename) as fp:
+		while line := fp.readline():
+			# added by untitled, allowing data with comments
+			line=line.strip()
+			if line[0]=="#":
+				line = fp.readline()
+				continue
 
-	while line:
-		# added by untitled, allowing data with comments
-		line=line.strip()
-		if line[0]=="#":
-			line = fp.readline()
-			continue
-
-		elems = line.split()
-		sample = {}
-		for e in elems[1:]:
-			points = e.split(":")
-			p0 = int( points[0].strip() )
-			p1 = float( points[1].strip() )
-			sample[p0] = p1
-			if p0 > max_index:
-				max_index = p0
-		labels.append(float(elems[0]))
-		samples.append(sample)
-		line = fp.readline()
-	fp.close()
-
+			elems = line.split()
+			sample = {}
+			for e in elems[1:]:
+				points = e.split(":")
+				p0 = int( points[0].strip() )
+				p1 = float( points[1].strip() )
+				sample[p0] = p1
+				if p0 > max_index:
+					max_index = p0
+			labels.append(float(elems[0]))
+			samples.append(sample)
 	return labels,samples,max_index
 
 def writedata(samples,labels,filename):
@@ -537,11 +519,10 @@ def writedata(samples,labels,filename):
 	num=len(samples)
 	for i in range(num):
 		if labels: 
-			fp.write("%s"%labels[i])
+			fp.write(f"{labels[i]}")
 		else:
 			fp.write("0")
-		kk=list(samples[i].keys())
-		kk.sort()
+		kk = sorted(samples[i].keys())
 		for k in kk:
 			fp.write(" %d:%f"%(k,samples[i][k]))
 		fp.write("\n")
@@ -554,7 +535,7 @@ def writedata(samples,labels,filename):
 
 arg_process()
 
-initlog("%s.select"%train_file)
+initlog(f"{train_file}.select")
 writelog("start: %s\n\n"%datetime.now())
 main()
 
